@@ -32,7 +32,6 @@ export default function Dashboard() {
     }
   };
 
-  // Cargar al inicio
   useEffect(() => {
     fetchData();
     setHoraActual(new Date().getHours());
@@ -46,9 +45,9 @@ export default function Dashboard() {
   const mensajesTotal = cuentasActivas.reduce((acc, curr) => acc + curr.mensajesHoy, 0);
   const cprGlobal = mensajesTotal > 0 ? (gastoTotal / mensajesTotal) : 0;
 
-  // --- GRÁFICO HORARIO (DE 6 AM A HORA ACTUAL) ---
+  // --- GRÁFICO HORARIO ---
   const DATA_HORARIA = (() => {
-    const horasPosibles = Array.from({ length: 18 }, (_, i) => i + 6); // [6, 7, 8... 23]
+    const horasPosibles = Array.from({ length: 18 }, (_, i) => i + 6); 
     const horasPasadas = horasPosibles.filter(h => h <= horaActual);
 
     if (horasPasadas.length === 0) return [{ hora: '06:00', mensajes: 0 }];
@@ -56,7 +55,6 @@ export default function Dashboard() {
     return horasPasadas.map((hora, index) => {
       const progreso = (index + 1) / horasPasadas.length; 
       const naturalidad = 0.95 + (Math.random() * 0.1); 
-      
       return {
         hora: `${hora.toString().padStart(2, '0')}:00`,
         mensajes: Math.round((mensajesTotal * progreso) * naturalidad)
@@ -64,7 +62,6 @@ export default function Dashboard() {
     });
   })();
 
-  // Lógica de Semáforos (AJUSTADA A VISUAL)
   const getBadgeClass = (cpr: number) => {
     if (cpr === 0) return 'badge';
     if (cpr <= 0.4) return 'badge optimo';
@@ -115,19 +112,60 @@ export default function Dashboard() {
         .chart-container { height: 350px; background: var(--bg-card); padding: 1.5rem; border-radius: 16px; border: 1px solid var(--border); }
         .refresh-btn { background: none; border: none; color: #3b82f6; cursor: pointer; display: flex; align-items: center; gap: 5px; font-size: 0.8rem; margin-top: 5px; }
 
+        /* --- TRANSFORMACIÓN MÁGICA PARA MÓVIL --- */
         @media (max-width: 768px) {
-          .dashboard-container { padding: 1rem !important; width: 100vw !important; overflow-x: hidden !important; }
-          .header { flex-direction: column !important; align-items: flex-start !important; gap: 1rem !important; }
-          .table-container { width: 100% !important; overflow-x: auto !important; display: block !important; -webkit-overflow-scrolling: touch; }
-          .mini-table { min-width: 600px; }
-          .chart-container { height: 300px; padding: 0.5rem; }
+          .dashboard-container { padding: 1rem !important; width: 100% !important; }
+          .header { flex-direction: column; align-items: flex-start; gap: 1rem; }
+          
+          /* Esconder cabecera de tabla */
+          .mini-table thead { display: none; }
+          
+          /* Convertir filas en TARJETAS */
+          .mini-table tr { 
+            display: flex; 
+            flex-wrap: wrap; 
+            background: #1a1a1a; 
+            margin: 0 1rem 1rem 1rem; 
+            padding: 1rem; 
+            border-radius: 12px; 
+            border: 1px solid #333; 
+          }
+          
+          /* Nombre de Campaña (Ancho completo arriba) */
+          .mini-table td:first-child { 
+            width: 100%; 
+            font-size: 1rem; 
+            margin-bottom: 12px; 
+            border-bottom: 1px solid #333; 
+            padding: 0 0 8px 0; 
+          }
+          
+          /* Las métricas (3 columnas abajo) */
+          .mini-table td:not(:first-child) { 
+            width: 33.33%; 
+            text-align: center !important; 
+            border: none !important; 
+            padding: 0 !important; 
+            display: flex; 
+            flex-direction: column; 
+            gap: 4px;
+          }
+
+          /* Etiquetas falsas para saber qué es qué */
+          .mini-table td:nth-of-type(2)::before { content: "GASTO"; font-size: 0.6rem; color: #666; font-weight: bold; }
+          .mini-table td:nth-of-type(3)::before { content: "MSJ"; font-size: 0.6rem; color: #666; font-weight: bold; }
+          .mini-table td:nth-of-type(4)::before { content: "CPR"; font-size: 0.6rem; color: #666; font-weight: bold; }
+          
+          /* Ajuste de números */
+          .mini-table td.num { font-size: 1rem; font-weight: bold; }
+          .badge { margin: 0; } /* Centrar badge */
         }
       `}</style>
 
       {/* HEADER */}
       <header className="header">
         <div className="title-area">
-          <h1><Activity color="#3b82f6" /> Ads Command Center</h1>
+          <h1><Activity color="#3b82f6" /> Ads Monitor</h1>
           <div style={{display:'flex', gap:'10px', alignItems:'center'}}>
              <p className="text-sm text-gray-500">Datos Reales • Hoy</p>
              <button onClick={fetchData} className="refresh-btn">
@@ -140,7 +178,6 @@ export default function Dashboard() {
         </div>
       </header>
 
-      {/* ERROR MSG */}
       {error && <div style={{color:'red', marginBottom:'1rem'}}>⚠️ {error}</div>}
 
       {loading && !cuentas.length ? (
@@ -151,7 +188,6 @@ export default function Dashboard() {
           <div className="kpi-row">
             <div className="kpi-card">
               <div className="kpi-label">Gasto Total Hoy</div>
-              {/* CAMBIO: S/ por $ */}
               <div className="kpi-value">$ {gastoTotal.toFixed(2)}</div>
             </div>
             <div className="kpi-card">
@@ -159,27 +195,26 @@ export default function Dashboard() {
               <div className="kpi-value">{mensajesTotal}</div>
             </div>
             <div className="kpi-card">
-              <div className="kpi-label">Costo por Mensaje (Global)</div>
+              <div className="kpi-label">Costo Global</div>
               <div className="kpi-value" style={{display:'flex', alignItems:'center', gap:'10px'}}>
-                {/* CAMBIO: S/ por $ */}
                 $ {cprGlobal.toFixed(2)}
                 <span className={getBadgeClass(cprGlobal)} style={{fontSize:'0.4em', padding:'2px 6px'}}>{getEstadoTexto(cprGlobal)}</span>
               </div>
             </div>
           </div>
 
-          {/* TABLA DE CAMPAÑAS */}
+          {/* LISTA DE CAMPAÑAS (TABLA EN PC / TARJETAS EN MÓVIL) */}
           <div className="master-card">
             <div className="master-header">
-              <h3 className="master-title">Rendimiento por Campaña (Hoy)</h3>
+              <h3 className="master-title">Campañas Activas</h3>
             </div>
             <div className="table-container">
               <table className="mini-table">
                 <thead>
                   <tr>
-                    <th>PRODUCTO / CAMPAÑA</th>
+                    <th>CAMPAÑA</th>
                     <th style={{textAlign:'right'}}>GASTO</th>
-                    <th style={{textAlign:'right'}}>MSJ</th>
+                    <th style={{textAlign:'center'}}>MSJ</th>
                     <th style={{textAlign:'right'}}>COSTO (CPR)</th>
                   </tr>
                 </thead>
@@ -192,11 +227,9 @@ export default function Dashboard() {
                       return (
                         <tr key={camp.id}>
                           <td style={{fontWeight:'600', color:'#fff'}}>{camp.producto}</td>
-                          {/* CAMBIO: S/ por $ en Gasto */}
                           <td className="num">$ {camp.gasto.toFixed(2)}</td>
                           <td className="num">{camp.mensajes}</td>
                           <td className="num">
-                            {/* CAMBIO: S/ por $ en Costo */}
                             <span className={getBadgeClass(cpr)}>$ {cpr.toFixed(2)}</span>
                           </td>
                         </tr>
@@ -208,11 +241,11 @@ export default function Dashboard() {
             </div>
           </div>
 
-          {/* GRÁFICO (IGUAL QUE ANTES) */}
+          {/* GRÁFICO */}
           <div className="chart-container">
             <div style={{display:'flex', alignItems:'center', marginBottom:'20px', gap:'10px'}}>
                 <MessageSquare size={20} color="#3b82f6"/>
-                <h3 style={{fontSize:'1.1rem', fontWeight:'bold'}}>Volumen de Mensajes (Tiempo Real)</h3>
+                <h3 style={{fontSize:'1.1rem', fontWeight:'bold'}}>Ritmo de Mensajes</h3>
             </div>
             <ResponsiveContainer width="100%" height="90%">
               <AreaChart data={DATA_HORARIA}>
