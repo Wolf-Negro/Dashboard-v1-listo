@@ -1,0 +1,129 @@
+:root {
+  --bg-main: #0a0a0a;
+  --bg-card: #141414;
+  --text-primary: #ffffff;
+  --text-secondary: #888888;
+  --border: #333333;
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  background-color: var(--bg-main);
+  color: var(--text-primary);
+  font-family: sans-serif;
+  overflow-x: hidden; /* Evita scroll blanco a la derecha */
+}
+
+.dashboard-container {
+  max-width: 1400px;
+  margin: 0 auto;
+  padding: 2rem;
+}
+
+/* Header */
+.header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 2rem;
+  padding-bottom: 1rem;
+  border-bottom: 1px solid var(--border);
+}
+
+.title-area h1 { font-size: 1.5rem; font-weight: 700; }
+
+/* KPIs */
+.kpi-row {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 1rem;
+  margin-bottom: 2rem;
+}
+
+.kpi-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  padding: 1.5rem;
+  border-radius: 12px;
+}
+.kpi-value { font-size: 1.8rem; font-weight: bold; }
+
+/* Cuentas */
+.accounts-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(500px, 1fr));
+  gap: 1.5rem;
+  margin-bottom: 2rem;
+}
+
+.account-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  overflow: hidden;
+}
+
+.account-header {
+  padding: 1.5rem;
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  justify-content: space-between;
+}
+
+.account-spend { text-align: right; font-weight: bold; font-size: 1.2rem; }
+
+/* Tabla */
+.table-container { padding: 1rem; }
+.mini-table { width: 100%; border-collapse: collapse; font-size: 0.85rem; }
+.mini-table th, .mini-table td { padding: 0.8rem; text-align: left; border-bottom: 1px solid #222; }
+.mini-table td.num { text-align: right; }
+
+/* Semáforos */
+.badge { padding: 3px 8px; border-radius: 4px; font-size: 0.7rem; font-weight: bold; margin-left: 8px; }
+.badge.optimo { background: rgba(0,255,157,0.1); color: #00ff9d; border: 1px solid #00ff9d; }
+.badge.regular { background: rgba(255,204,0,0.1); color: #ffcc00; border: 1px solid #ffcc00; }
+.badge.critico { background: rgba(255,77,77,0.1); color: #ff4d4d; border: 1px solid #ff4d4d; }
+
+.chart-container { height: 350px; background: var(--bg-card); padding: 1rem; border-radius: 16px; border: 1px solid var(--border); }
+
+/* --- MÓVIL (AQUÍ ESTÁ EL ARREGLO) --- */
+@media (max-width: 768px) {
+  .dashboard-container {
+    padding: 1rem !important;
+    width: 100vw !important;
+    overflow-x: hidden !important;
+  }
+
+  /* Forzamos que todo se apile verticalmente */
+  .header, .account-header {
+    flex-direction: column !important;
+    align-items: flex-start !important;
+    gap: 1rem !important;
+  }
+
+  /* Ajuste de tarjetas */
+  .accounts-grid {
+    grid-template-columns: 1fr !important;
+    display: flex !important;
+    flex-direction: column !important;
+  }
+
+  .account-card {
+    width: 100% !important;
+    min-width: 0 !important; /* CRUCIAL para que no se salga */
+  }
+
+  .account-spend { text-align: left !important; }
+
+  /* La Tabla ahora tiene su propio scroll si es muy ancha */
+  .table-container {
+    width: 100% !important;
+    overflow-x: auto !important; /* Scroll lateral solo en la tabla */
+    display: block !important;
+  }
+  
+  .mini-table {
+    min-width: 500px; /* Fuerza el scroll si la pantalla es chica */
+  }
+}
