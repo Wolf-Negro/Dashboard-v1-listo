@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useEffect, useState } from 'react';
-import { Activity, MessageSquare, RefreshCw, Package } from 'lucide-react';
+import { Activity, MessageSquare, RefreshCw, Package, Filter, ArrowUpDown } from 'lucide-react';
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 
 /* --- TIPOS DE DATOS --- */
@@ -13,6 +13,10 @@ export default function Dashboard() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [horaActual, setHoraActual] = useState(new Date().getHours());
+
+  // ESTADOS PARA FILTRO Y ORDEN
+  const [filtroEstado, setFiltroEstado] = useState('TODOS'); // TODOS, OPTIMO, REGULAR, CRITICO
+  const [ordenCosto, setOrdenCosto] = useState<'MEJOR' | 'PEOR'>('MEJOR');
 
   // FUNCIÓN PARA TRAER DATA REAL
   const fetchData = async () => {
@@ -45,11 +49,11 @@ export default function Dashboard() {
   const mensajesTotal = cuentasActivas.reduce((acc, curr) => acc + curr.mensajesHoy, 0);
   const cprGlobal = mensajesTotal > 0 ? (gastoTotal / mensajesTotal) : 0;
 
-  // --- NUEVA LÓGICA CORREGIDA: AGRUPACIÓN POR PRODUCTO ---
+  // --- LOGICA DE AGRUPACIÓN POR PRODUCTO (CON FIX NK/NT) ---
   const statsProductos = {
     'CD': { nombre: 'Cuerpo Divino', gasto: 0, mensajes: 0 },
     'MD': { nombre: 'Mujer Divina', gasto: 0, mensajes: 0 },
-    'NT': { nombre: 'Nutrikids', gasto: 0, mensajes: 0 }, // Aquí se sumarán los NK
+    'NT': { nombre: 'Nutrikids', gasto: 0, mensajes: 0 },
     'KD': { nombre: 'Kid', gasto: 0, mensajes: 0 },
     'OTROS': { nombre: 'Otros / Sin Código', gasto: 0, mensajes: 0 },
   };
@@ -58,35 +62,58 @@ export default function Dashboard() {
     const nombreUpper = camp.producto.toUpperCase().trim();
     let codigo = 'OTROS';
 
-    // Lógica estricta de prefijos
     if (nombreUpper.startsWith('CD')) {
       codigo = 'CD';
     } else if (nombreUpper.startsWith('MD')) {
       codigo = 'MD';
     } else if (nombreUpper.startsWith('NK') || nombreUpper.startsWith('NT')) {
-      // ACEPTA NK (Tu caso real) o NT
-      codigo = 'NT';
+      codigo = 'NT'; // Sumamos NK y NT juntos
     } else if (nombreUpper.startsWith('KD')) {
       codigo = 'KD';
     }
 
-    // Sumar a la categoría correspondiente
     if (statsProductos[codigo as keyof typeof statsProductos]) {
         statsProductos[codigo as keyof typeof statsProductos].gasto += camp.gasto;
         statsProductos[codigo as keyof typeof statsProductos].mensajes += camp.mensajes;
     }
   });
 
-  // Convertimos el objeto en array para poder dibujarlo, filtrando los que tienen 0 gasto
   const listaProductos = Object.values(statsProductos).filter(p => p.gasto > 0);
+
+  // --- LÓGICA DE FILTRADO Y ORDENAMIENTO DE CAMPAÑAS ---
+  const getClasificacion = (cpr: number) => {
+    if (cpr === 0) return 'PENDIENTE';
+    if (cpr <= 0.4) return 'OPTIMO';
+    if (cpr <= 0.9) return 'REGULAR';
+    return 'CRITICO';
+  };
+
+  const campañasFiltradas = todosLosProductos
+    .filter(camp => {
+        if (filtroEstado === 'TODOS') return true;
+        const cpr = camp.mensajes > 0 ? camp.gasto / camp.mensajes : 0;
+        return getClasificacion(cpr) === filtroEstado;
+    })
+    .sort((a, b) => {
+        const cprA = a.mensajes > 0 ? a.gasto / a.mensajes : 0;
+        const cprB = b.mensajes > 0 ? b.gasto / b.mensajes : 0;
+        
+        // Siempre movemos los que tienen 0 (sin datos) al final para no estorbar
+        if (cprA === 0) return 1;
+        if (cprB === 0) return -1;
+
+        if (ordenCosto === 'MEJOR') {
+            return cprA - cprB; // Menor a Mayor
+        } else {
+            return cprB - cprA; // Mayor a Menor
+        }
+    });
 
   // --- GRÁFICO HORARIO ---
   const DATA_HORARIA = (() => {
     const horasPosibles = Array.from({ length: 18 }, (_, i) => i + 6); 
     const horasPasadas = horasPosibles.filter(h => h <= horaActual);
-
     if (horasPasadas.length === 0) return [{ hora: '06:00', mensajes: 0 }];
-
     return horasPasadas.map((hora, index) => {
       const progreso = (index + 1) / horasPasadas.length; 
       const naturalidad = 0.95 + (Math.random() * 0.1); 
@@ -129,7 +156,7 @@ export default function Dashboard() {
         .kpi-label { color: var(--text-secondary); font-size: 0.75rem; text-transform: uppercase; letter-spacing: 1px; font-weight: 600; }
 
         .master-card { background: var(--bg-card); border: 1px solid var(--border); border-radius: 16px; overflow: hidden; margin-bottom: 2rem; }
-        .master-header { padding: 1.5rem; border-bottom: 1px solid var(--border); }
+        .master-header { padding: 1.5rem; border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem; }
         .master-title { font-size: 1.2rem; font-weight: bold; }
 
         .table-container { padding: 0; }
@@ -146,48 +173,27 @@ export default function Dashboard() {
 
         .chart-container { height: 350px; background: var(--bg-card); padding: 1.5rem; border-radius: 16px; border: 1px solid var(--border); }
         .refresh-btn { background: none; border: none; color: #3b82f6; cursor: pointer; display: flex; align-items: center; gap: 5px; font-size: 0.8rem; margin-top: 5px; }
+        
+        /* Controles de filtro */
+        .controls-area { display: flex; gap: 10px; align-items: center; }
+        .filter-select { background: #0a0a0a; color: #fff; border: 1px solid #333; padding: 6px 12px; border-radius: 8px; font-size: 0.85rem; outline: none; }
+        .sort-btn { background: #0a0a0a; color: #fff; border: 1px solid #333; padding: 6px 12px; border-radius: 8px; font-size: 0.85rem; cursor: pointer; display: flex; align-items: center; gap: 6px; }
+        .sort-btn:hover { border-color: #555; }
 
-        /* --- TRANSFORMACIÓN MÁGICA PARA MÓVIL --- */
         @media (max-width: 768px) {
           .dashboard-container { padding: 1rem !important; width: 100% !important; }
           .header { flex-direction: column; align-items: flex-start; gap: 1rem; }
+          .master-header { flex-direction: column; align-items: flex-start; }
+          .controls-area { width: 100%; justify-content: space-between; }
+          .filter-select, .sort-btn { flex: 1; justify-content: center; }
           
-          /* Esconder cabecera de tabla */
           .mini-table thead { display: none; }
-          
-          /* Convertir filas en TARJETAS */
-          .mini-table tr { 
-            display: flex; 
-            flex-wrap: wrap; 
-            background: #1a1a1a; 
-            margin: 0 1rem 1rem 1rem; 
-            padding: 1rem; 
-            border-radius: 12px; 
-            border: 1px solid #333; 
-          }
-          
-          .mini-table td:first-child { 
-            width: 100%; 
-            font-size: 1rem; 
-            margin-bottom: 12px; 
-            border-bottom: 1px solid #333; 
-            padding: 0 0 8px 0; 
-          }
-          
-          .mini-table td:not(:first-child) { 
-            width: 33.33%; 
-            text-align: center !important; 
-            border: none !important; 
-            padding: 0 !important; 
-            display: flex; 
-            flex-direction: column; 
-            gap: 4px;
-          }
-
+          .mini-table tr { display: flex; flex-wrap: wrap; background: #1a1a1a; margin: 0 1rem 1rem 1rem; padding: 1rem; border-radius: 12px; border: 1px solid #333; }
+          .mini-table td:first-child { width: 100%; font-size: 1rem; margin-bottom: 12px; border-bottom: 1px solid #333; padding: 0 0 8px 0; }
+          .mini-table td:not(:first-child) { width: 33.33%; text-align: center !important; border: none !important; padding: 0 !important; display: flex; flex-direction: column; gap: 4px; }
           .mini-table td:nth-of-type(2)::before { content: "GASTO"; font-size: 0.6rem; color: #666; font-weight: bold; }
           .mini-table td:nth-of-type(3)::before { content: "MSJ"; font-size: 0.6rem; color: #666; font-weight: bold; }
           .mini-table td:nth-of-type(4)::before { content: "CPR"; font-size: 0.6rem; color: #666; font-weight: bold; }
-          
           .mini-table td.num { font-size: 1rem; font-weight: bold; }
           .badge { margin: 0; }
         }
@@ -234,7 +240,7 @@ export default function Dashboard() {
             </div>
           </div>
 
-          {/* --- NUEVA TABLA: RENDIMIENTO POR PRODUCTO --- */}
+          {/* TABLA: RENDIMIENTO POR PRODUCTO */}
           <div className="master-card" style={{border:'1px solid #3b82f640'}}>
             <div className="master-header">
               <div style={{display:'flex', alignItems:'center', gap:'10px'}}>
@@ -275,11 +281,34 @@ export default function Dashboard() {
             </div>
           </div>
 
-          {/* LISTA DE CAMPAÑAS INDIVIDUALES */}
+          {/* LISTA DE CAMPAÑAS INDIVIDUALES (CON FILTRO) */}
           <div className="master-card">
             <div className="master-header">
               <h3 className="master-title">Desglose por Campaña</h3>
+              
+              {/* CONTROLES DE FILTRO Y ORDEN */}
+              <div className="controls-area">
+                <select 
+                  className="filter-select"
+                  value={filtroEstado}
+                  onChange={(e) => setFiltroEstado(e.target.value)}
+                >
+                  <option value="TODOS">Ver Todos</option>
+                  <option value="OPTIMO">🟢 Óptimos (Bajo Costo)</option>
+                  <option value="REGULAR">🟡 Regulares</option>
+                  <option value="CRITICO">🔴 Críticos (Alto Costo)</option>
+                </select>
+
+                <button 
+                  className="sort-btn"
+                  onClick={() => setOrdenCosto(ordenCosto === 'MEJOR' ? 'PEOR' : 'MEJOR')}
+                >
+                  <ArrowUpDown size={14} />
+                  {ordenCosto === 'MEJOR' ? 'Mejor Costo' : 'Peor Costo'}
+                </button>
+              </div>
             </div>
+
             <div className="table-container">
               <table className="mini-table">
                 <thead>
@@ -291,10 +320,12 @@ export default function Dashboard() {
                   </tr>
                 </thead>
                 <tbody>
-                  {todosLosProductos.length === 0 ? (
-                     <tr><td colSpan={4} style={{textAlign:'center', padding:'2rem', color:'#666'}}>No hay actividad hoy todavía</td></tr>
+                  {campañasFiltradas.length === 0 ? (
+                     <tr><td colSpan={4} style={{textAlign:'center', padding:'2rem', color:'#666'}}>
+                       {filtroEstado !== 'TODOS' ? 'No hay campañas en esta categoría' : 'No hay actividad hoy todavía'}
+                     </td></tr>
                   ) : (
-                    todosLosProductos.map((camp) => {
+                    campañasFiltradas.map((camp) => {
                       const cpr = camp.mensajes > 0 ? camp.gasto / camp.mensajes : 0;
                       return (
                         <tr key={camp.id}>
