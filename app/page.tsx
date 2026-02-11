@@ -45,26 +45,36 @@ export default function Dashboard() {
   const mensajesTotal = cuentasActivas.reduce((acc, curr) => acc + curr.mensajesHoy, 0);
   const cprGlobal = mensajesTotal > 0 ? (gastoTotal / mensajesTotal) : 0;
 
-  // --- NUEVA LÓGICA: AGRUPACIÓN POR PRODUCTO ---
+  // --- NUEVA LÓGICA CORREGIDA: AGRUPACIÓN POR PRODUCTO ---
   const statsProductos = {
     'CD': { nombre: 'Cuerpo Divino', gasto: 0, mensajes: 0 },
     'MD': { nombre: 'Mujer Divina', gasto: 0, mensajes: 0 },
-    'NT': { nombre: 'Nutrikids', gasto: 0, mensajes: 0 },
+    'NT': { nombre: 'Nutrikids', gasto: 0, mensajes: 0 }, // Aquí se sumarán los NK
     'KD': { nombre: 'Kid', gasto: 0, mensajes: 0 },
     'OTROS': { nombre: 'Otros / Sin Código', gasto: 0, mensajes: 0 },
   };
 
   todosLosProductos.forEach(camp => {
-    const nombreUpper = camp.producto.toUpperCase();
+    const nombreUpper = camp.producto.toUpperCase().trim();
     let codigo = 'OTROS';
 
-    if (nombreUpper.startsWith('CD')) codigo = 'CD';
-    else if (nombreUpper.startsWith('MD')) codigo = 'MD';
-    else if (nombreUpper.startsWith('NT')) codigo = 'NT';
-    else if (nombreUpper.startsWith('KD')) codigo = 'KD';
+    // Lógica estricta de prefijos
+    if (nombreUpper.startsWith('CD')) {
+      codigo = 'CD';
+    } else if (nombreUpper.startsWith('MD')) {
+      codigo = 'MD';
+    } else if (nombreUpper.startsWith('NK') || nombreUpper.startsWith('NT')) {
+      // ACEPTA NK (Tu caso real) o NT
+      codigo = 'NT';
+    } else if (nombreUpper.startsWith('KD')) {
+      codigo = 'KD';
+    }
 
-    statsProductos[codigo as keyof typeof statsProductos].gasto += camp.gasto;
-    statsProductos[codigo as keyof typeof statsProductos].mensajes += camp.mensajes;
+    // Sumar a la categoría correspondiente
+    if (statsProductos[codigo as keyof typeof statsProductos]) {
+        statsProductos[codigo as keyof typeof statsProductos].gasto += camp.gasto;
+        statsProductos[codigo as keyof typeof statsProductos].mensajes += camp.mensajes;
+    }
   });
 
   // Convertimos el objeto en array para poder dibujarlo, filtrando los que tienen 0 gasto
